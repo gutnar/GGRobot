@@ -5,12 +5,15 @@
 #ifndef GGROBOT_CONTROLPANEL_H
 #define GGROBOT_CONTROLPANEL_H
 
-#include <highgui.h>
+#include <cstdio>
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
 
 namespace gg {
     class ControlPanel
     {
     public:
+        GLFWwindow* window;
         ControlPanel();
     };
 }

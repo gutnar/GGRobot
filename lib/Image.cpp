@@ -6,7 +6,6 @@
 
 
 namespace gg {
-
     Image::Image(cv::Mat &cvImage)
     {
 

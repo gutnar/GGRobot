@@ -5,28 +5,26 @@
 #ifndef GGROBOT_TIMER_H
 #define GGROBOT_TIMER_H
 
-#include <sys/time.h>
+#include <GLFW/glfw3.h>
 
 
 namespace gg {
-    typedef long long int timestamp;
-
     class Timer
     {
     public:
         /// @brief Default constructor
         Timer();
 
-        /// @brief Get number of milliseconds since the epoch
-        /// @return Number of milliseconds since the epoch
-        timestamp getTimestamp();
+        /// @brief Get number of milliseconds since initialization
+        /// @return Number of milliseconds since initialization
+        double getTime();
 
         /// @brief Get the current FPS
         /// @return The current FPS
         int getFPS();
     private:
-        // Timestamp when this timer was created
-        timestamp mStartTime;
+        // Time when this timer was created
+        double mStartTime;
 
         // Number of ticks since the FPS was last reported
         int mTicks;
@@ -34,8 +32,8 @@ namespace gg {
         // Current measured average FPS
         int mCurrentFPS;
 
-        // Timestamp when the last FPS value was reported
-        timestamp mPreviousTimestamp;
+        // Time when the last FPS value was reported
+        double mPreviousTime;
     };
 }
 

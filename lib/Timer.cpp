@@ -8,15 +8,20 @@ namespace gg {
 
     Timer::Timer()
     {
-        mStartTime = getTimestamp();
+        mStartTime = getTime();
     }
 
-    /// Finds the number of milliseconds elapsed since the epoch (January 1, 1970)
-    timestamp Timer::getTimestamp()
+    /// Finds the time in seconds passed since initialization
+    double Timer::getTime()
     {
+        return glfwGetTime();
+
+        /*
         timeval tp;
         gettimeofday(&tp, NULL);
         return tp.tv_sec * 1000 + tp.tv_usec / 1000;
+         */
+
         //return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     }
 
@@ -24,12 +29,12 @@ namespace gg {
     int Timer::getFPS()
     {
         // Calculate new FPS when 10 frames reached
-        // FPS = (10 frames) per (time between 10 frames in milliseconds) times
+        // FPS = (10 frames) per (time between 10 frames in seconds) times
         if (mTicks == 10) {
             mTicks = 0;
-            timestamp currentTimestamp = getTimestamp();
-            mCurrentFPS = (int) (10.0 / (currentTimestamp - mPreviousTimestamp) * 1000);
-            mPreviousTimestamp = currentTimestamp;
+            double currentTime = getTime();
+            mCurrentFPS = (int) (10.0 / (currentTime - mPreviousTime));
+            mPreviousTime = currentTime;
         }
 
         // Increment number of ticks before returning to prevent division by zero on first frame

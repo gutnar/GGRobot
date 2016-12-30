@@ -11,6 +11,9 @@ namespace gg {
     class Image
     {
     public:
+        /// @brief Pixel values
+
+
         /// @brief Create an image from an OpenCV material
         Image(cv::Mat &cvImage);
     private:
