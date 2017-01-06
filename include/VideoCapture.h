@@ -21,13 +21,9 @@ namespace gg {
         // Destructor, stops capturing
         ~VideoCapture();
 
-        /// @brief Get an image from the device
-        /// @return An image as the captured frame
-        //cv::Mat getCurrentFrame();
-
         /// @brief Get the latest captured thread
         /// @return Image
-        //cv::Mat getLatestFrame();
+        cv::Mat getLatestFrame();
 
         /// @brief Start capturing frames
         void startCapture();
@@ -51,13 +47,7 @@ namespace gg {
         cv::VideoCapture mVideoCapture;
 
         // Latest captured frame
-        //cv::Mat mLatestFrame;
-
-        // Thread that updates latest frame continously
-        std::thread mThread;
-
-        // Repeatedly fetch and store frames
-        void storeLatestFrame();
+        cv::Mat mLatestFrame;
     };
 }
 

@@ -4,180 +4,279 @@
 
 #include "BlobDetector.h"
 
-#define DATA_SIZE (1024)
 
 namespace gg {
     BlobDetector::BlobDetector()
     {
+        // Generate OpenGL texture
+        glGenTextures(1, &mTextureID);
+
+        /// OPENCL COMPILATION
         int err;                            // error code returned from api calls
 
-        float data[DATA_SIZE];              // original data set given to device
-        float results[DATA_SIZE];           // results returned from device
-        unsigned int correct;               // number of correct results returned
-
-        size_t global;                      // global domain size for our calculation
-        size_t local;                       // local domain size for our calculation
-
-        cl_device_id device_id;             // compute device id
-        cl_context context;                 // compute context
-        cl_command_queue commands;          // compute command queue
-        cl_program program;                 // compute program
-        cl_kernel kernel;                   // compute kernel
-
-        cl_mem input;                       // device memory used for the input array
-        cl_mem output;                      // device memory used for the output array
-
-        // Fill our data set with random float values
-        //
-        int i = 0;
-        unsigned int count = DATA_SIZE;
-        for(i = 0; i < count; i++)
-            data[i] = rand() / (float)RAND_MAX;
-
         // Connect to a compute device
-        //
-        int gpu = 1;
-        err = clGetDeviceIDs(NULL, gpu ? CL_DEVICE_TYPE_GPU : CL_DEVICE_TYPE_CPU, 1, &device_id, NULL);
-        if (err != CL_SUCCESS)
-        {
+        err = clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, 1, &mCLDeviceId, NULL);
+
+        if (err != CL_SUCCESS) {
             printf("Error: Failed to create a device group!\n");
             return;
         }
 
         // Create a compute context
-        //
-        context = clCreateContext(0, 1, &device_id, NULL, NULL, &err);
-        if (!context)
-        {
+        mCLContext = clCreateContext(0, 1, &mCLDeviceId, NULL, NULL, &err);
+
+        if (!mCLContext) {
             printf("Error: Failed to create a compute context!\n");
             return;
         }
 
-        // Create a command commands
-        //
-        commands = clCreateCommandQueue(context, device_id, 0, &err);
-        if (!commands)
-        {
-            printf("Error: Failed to create a command commands!\n");
-            return;
-        }
+        // Kernel source
+        std::ifstream clFile("lib/BlobDetectorKernels.cl");
+        std::string clString(std::istreambuf_iterator<char>(clFile),
+                              (std::istreambuf_iterator<char>()));
+        const char* kernelSource = clString.c_str();
 
         // Create the compute program from the source buffer
-        //
-        program = clCreateProgramWithSource(context, 1, (const char **) & mKernelSource, NULL, &err);
-        if (!program)
+        mCLProgram = clCreateProgramWithSource(mCLContext, 1, (const char **) & kernelSource, NULL, &err);
+
+        if (!mCLProgram)
         {
             printf("Error: Failed to create compute program!\n");
             return;
         }
 
         // Build the program executable
-        //
-        err = clBuildProgram(program, 0, NULL, NULL, NULL, NULL);
+        err = clBuildProgram(mCLProgram, 0, NULL, NULL, NULL, NULL);
+
         if (err != CL_SUCCESS)
         {
             size_t len;
             char buffer[2048];
 
             printf("Error: Failed to build program executable!\n");
-            clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer, &len);
+            clGetProgramBuildInfo(mCLProgram, mCLDeviceId, CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer, &len);
             printf("%s\n", buffer);
-            return;
+            exit(1);
+        }
+    }
+
+    BlobDetector::~BlobDetector()
+    {
+        clReleaseProgram(mCLProgram);
+        clReleaseContext(mCLContext);
+    }
+
+    void BlobDetector::processImage(GLuint texture)
+    {
+
+
+    }
+
+    void BlobDetector::processImage(cv::Mat mat)
+    {
+        // Processed image
+        cv::Mat processedMat;
+
+        // Resize image
+        cv::resize(mat, processedMat, cv::Size(640, 360), 0, 0, CV_INTER_LINEAR);
+
+        // Convert BGR to HSV
+        //cv::cvtColor(processedMat, processedMat, cv::COLOR_BGR2HSV);
+
+        // Image size
+        const int width = processedMat.cols;
+        const int height = processedMat.rows;
+        const int numberOfPixels = width*height;
+        const size_t dimensions[2] = {(size_t) width, (size_t) height};
+
+        /// OPENCL
+        int err;
+
+        // Input
+        int in[numberOfPixels*3];
+
+        for (int y = 0; y < height; ++y) {
+            for (int x = 0; x < width; ++x) {
+                cv::Vec3b pixel = processedMat.at<cv::Vec3b>(y, x);
+
+                in[(y*width + x)*3 + 0] = pixel[0];
+                in[(y*width + x)*3 + 1] = pixel[1];
+                in[(y*width + x)*3 + 2] = pixel[2];
+            }
         }
 
-        // Create the compute kernel in the program we wish to run
-        //
-        kernel = clCreateKernel(program, "square", &err);
-        if (!kernel || err != CL_SUCCESS)
-        {
-            printf("Error: Failed to create compute kernel!\n");
-            return;
-        }
+        cl_mem bufferIn = clCreateBuffer(mCLContext, CL_MEM_READ_ONLY,  sizeof(int)*numberOfPixels*3, NULL, NULL);
 
-        // Create the input and output arrays in device memory for our calculation
-        //
-        input = clCreateBuffer(context,  CL_MEM_READ_ONLY,  sizeof(float) * count, NULL, NULL);
-        output = clCreateBuffer(context, CL_MEM_WRITE_ONLY, sizeof(float) * count, NULL, NULL);
-        if (!input || !output)
-        {
-            printf("Error: Failed to allocate device memory!\n");
-            return;
-        }
+        // Output
+        int out[numberOfPixels];
 
-        // Write our data set into the input array in device memory
-        //
-        err = clEnqueueWriteBuffer(commands, input, CL_TRUE, 0, sizeof(float) * count, data, 0, NULL, NULL);
-        if (err != CL_SUCCESS)
-        {
-            printf("Error: Failed to write to source array!\n");
-            return;
-        }
+        cl_mem bufferOut = clCreateBuffer(mCLContext, CL_MEM_WRITE_ONLY, sizeof(int)*numberOfPixels, NULL, NULL);
 
-        // Set the arguments to our compute kernel
-        //
-        err = 0;
-        err  = clSetKernelArg(kernel, 0, sizeof(cl_mem), &input);
-        err |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &output);
-        err |= clSetKernelArg(kernel, 2, sizeof(unsigned int), &count);
-        if (err != CL_SUCCESS)
-        {
-            printf("Error: Failed to set kernel arguments! %d\n", err);
-            return;
-        }
+        // Kernel
+        cl_kernel kernel = clCreateKernel(mCLProgram, "mark_pixels", &err);
+        clSetKernelArg(kernel, 0, sizeof(cl_mem), &bufferIn);
+        clSetKernelArg(kernel, 1, sizeof(cl_mem), &bufferOut);
 
-        // Get the maximum work group size for executing the kernel on the device
-        //
-        err = clGetKernelWorkGroupInfo(kernel, device_id, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local), &local, NULL);
-        if (err != CL_SUCCESS)
-        {
-            printf("Error: Failed to retrieve kernel work group info! %d\n", err);
-            return;
-        }
-
-        // Execute the kernel over the entire range of our 1d input data set
-        // using the maximum number of work group items for this device
-        //
-        global = count;
-        err = clEnqueueNDRangeKernel(commands, kernel, 1, NULL, &global, &local, 0, NULL, NULL);
-        if (err)
-        {
-            printf("Error: Failed to execute kernel!\n");
-            return;
-        }
-
-        // Wait for the command commands to get serviced before reading back results
-        //
+        // Commands
+        cl_command_queue commands = clCreateCommandQueue(mCLContext, mCLDeviceId, 0, &err);
+        clEnqueueWriteBuffer(commands, bufferIn, CL_TRUE, 0, sizeof(int)*numberOfPixels*3, in, 0, NULL, NULL);
+        clEnqueueNDRangeKernel(commands, kernel, 2, NULL, dimensions, NULL, 0, NULL, NULL);
         clFinish(commands);
+        clEnqueueReadBuffer(commands, bufferOut, CL_TRUE, 0, sizeof(int) * numberOfPixels, out, 0, NULL, NULL);
 
-        // Read back the results from the device to verify the output
-        //
-        err = clEnqueueReadBuffer( commands, output, CL_TRUE, 0, sizeof(float) * count, results, 0, NULL, NULL );
-        if (err != CL_SUCCESS)
-        {
-            printf("Error: Failed to read output array! %d\n", err);
-            return;
+        /// MARK PIXELS
+        for (int y = 0; y < height; ++y) {
+            for (int x = 0; x < width; ++x) {
+                switch (out[y*width + x]) {
+                    // white
+                    case 0:
+                        processedMat.at<cv::Vec3b>(y, x) = cv::Vec3b(255, 255, 255);
+                        break;
+                        // yellow
+                    case 1:
+                        processedMat.at<cv::Vec3b>(y, x) = cv::Vec3b(0, 255, 255);
+                        break;
+                        // blue
+                    case 2:
+                        processedMat.at<cv::Vec3b>(y, x) = cv::Vec3b(255, 0, 0);
+                        break;
+                        // black
+                    case 3:
+                        processedMat.at<cv::Vec3b>(y, x) = cv::Vec3b(0, 0, 0);
+                        break;
+                        // green
+                    case 4:
+                        processedMat.at<cv::Vec3b>(y, x) = cv::Vec3b(0, 255, 0);
+                        break;
+                }
+            }
         }
 
-        // Validate our results
-        //
-        correct = 0;
-        for(i = 0; i < count; i++)
-        {
-            if(results[i] == data[i] * data[i])
-                correct++;
-        }
-
-        // Print a brief summary detailing the results
-        //
-        printf("Computed '%d/%d' correct values!\n", correct, count);
-
-        // Shutdown and cleanup
-        //
-        clReleaseMemObject(input);
-        clReleaseMemObject(output);
-        clReleaseProgram(program);
+        // Clean up
+        clReleaseMemObject(bufferIn);
+        clReleaseMemObject(bufferOut);
         clReleaseKernel(kernel);
         clReleaseCommandQueue(commands);
-        clReleaseContext(context);
+
+        // Find blobs
+        //findBlobs(processedMat, out);
+
+        /// TEXTURING
+        // Bind to our texture handle
+        glBindTexture(GL_TEXTURE_2D, mTextureID);
+
+        // Set texture interpolation methods for minification and magnification
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+        // Set texture clamping method
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+
+        // Create the texture
+        glTexImage2D(GL_TEXTURE_2D,     // Type of texture
+                     0,                 // Pyramid level (for mip-mapping) - 0 is the top level
+                     GL_RGB,            // Internal colour format to convert to
+                     width,          // Image width
+                     height,          // Image height
+                     0,                 // Border width in pixels (can either be 1 or 0)
+                     GL_BGR, // Input image format (i.e. GL_RGB, GL_RGBA, GL_BGR etc.)
+                     GL_UNSIGNED_BYTE,  // Image data type
+                     processedMat.ptr());        // The actual image data itself
+    }
+
+    GLuint BlobDetector::getTextureID() {
+        return mTextureID;
+    }
+
+    void BlobDetector::findBlobs(cv::Mat mat, int* out) {
+        int height = mat.rows;
+        int width = mat.cols;
+        /// DETECT BLOBS OF SAME COLOR
+        std::vector<Blob> blobs;
+        std::vector<BlobLine> previousLines;
+
+        for (int y = 0; y < height; ++y) {
+            std::vector<BlobLine> currentLines;
+
+            int lastColor = out[y*width];
+            int beginColorIndex = 0;
+
+            for (int x = 1; x < width + 1; ++x) {
+                int i = y*width + x;
+                int currentColor = (x == width) ? -1 : out[i];
+
+                if (lastColor != currentColor) {
+                    if ((lastColor == 1 || lastColor == 2 || lastColor == 5) && x - 1 - beginColorIndex > 1) {//} || out[i] == 2) {
+                        BlobLine line;
+                        line.y = y;
+                        line.xi = beginColorIndex;
+                        line.xf = x - 1;
+                        line.color = lastColor;
+                        line.blobIndex = -1;
+
+                        for (int l = 0; l < previousLines.size(); ++l) {
+                            // Skip if colors do not match
+                            if (previousLines[l].color != line.color) {
+                                continue;
+                            }
+
+                            /*
+                            // Skip if lines do not touch
+                            if (previousLines[l].xi > line.xf || previousLines[l].xf < line.xi) {
+                                continue;
+                            }
+                             */
+
+                            // Skip if touching is too small
+                            int common = std::min(previousLines[l].xf, line.xf) - std::max(previousLines[l].xi, line.xi);
+
+                            if (common < 2) {
+                                continue;
+                            }
+
+                            // Connect lines into blob
+                            if (line.blobIndex == -1) {
+                                line.blobIndex = previousLines[l].blobIndex;
+                                //cout << line.blobIndex << endl;
+                            } else if (line.blobIndex != previousLines[l].blobIndex) {
+                                blobs[line.blobIndex].addBlob(blobs[previousLines[l].blobIndex]);
+                                blobs[previousLines[l].blobIndex].mHidden = true;
+                                previousLines[l].blobIndex = line.blobIndex;
+                            }
+                        }
+
+                        // Create new blob?
+                        if (line.blobIndex == -1) {
+                            Blob blob(lastColor);
+                            line.blobIndex = (int) blobs.size();
+                            blobs.push_back(blob);
+                        }
+
+                        // Add line to blob
+                        blobs[line.blobIndex].addLine(line);
+
+                        // Add to current row
+                        currentLines.push_back(line);
+                    }
+
+                    beginColorIndex = x;
+                    lastColor = currentColor;
+                }
+            }
+
+            previousLines = currentLines;
+        }
+
+        for (int i = 0; i < blobs.size(); ++i) {
+            cv::line(mat, cv::Point(blobs[i].mMinX, blobs[i].mMinY), cv::Point(blobs[i].mMaxX, blobs[i].mMinY),
+                     cv::Scalar(0, 0, 0));
+            cv::line(mat, cv::Point(blobs[i].mMinX, blobs[i].mMaxY), cv::Point(blobs[i].mMaxX, blobs[i].mMaxY),
+                     cv::Scalar(0, 0, 0));
+            cv::line(mat, cv::Point(blobs[i].mMinX, blobs[i].mMinY), cv::Point(blobs[i].mMinX, blobs[i].mMaxY),
+                     cv::Scalar(0, 0, 0));
+            cv::line(mat, cv::Point(blobs[i].mMaxX, blobs[i].mMinY), cv::Point(blobs[i].mMaxX, blobs[i].mMaxY),
+                     cv::Scalar(0, 0, 0));
+        }
     }
 }

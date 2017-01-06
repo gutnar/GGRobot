@@ -6,7 +6,7 @@ project(GGRobot)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 # Sources
-set(SOURCE_FILES tests/main.cpp lib/Timer.cpp lib/VideoCapture.cpp lib/Image.cpp lib/ControlPanel.cpp lib/BlobDetector.cpp)
+set(SOURCE_FILES tests/main.cpp lib/Timer.cpp lib/VideoCapture.cpp lib/ControlPanel.cpp lib/BlobDetector.cpp lib/Blob.cpp lib/Blob.h)
 add_executable(GGRobot ${SOURCE_FILES})
 
 # Link OpenCL
@@ -33,5 +33,5 @@ if(APPLE)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -L/usr/local/lib -lglfw3 -lglew")
 endif(APPLE)
 
-# Link
+# Include directories
 target_include_directories(GGRobot PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/lib ${CMAKE_CURRENT_SOURCE_DIR}/include)
