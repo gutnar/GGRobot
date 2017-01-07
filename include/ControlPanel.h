@@ -1,7 +1,3 @@
-//
-// Created by Gutnar Leede on 05/12/2016.
-//
-
 #ifndef GGROBOT_CONTROLPANEL_H
 #define GGROBOT_CONTROLPANEL_H
 
@@ -11,6 +7,9 @@
 #include <GLFW/glfw3.h>
 
 namespace gg {
+    // Callback function type
+    typedef void (*callbackType)(GLFWwindow* window, unsigned int codepoint);
+
     class ControlPanel
     {
     public:
@@ -45,6 +44,9 @@ namespace gg {
 
         /// @brief Redraw control panel content
         void redraw();
+
+        /// @brief Add keyboard input event handler
+        void setCharCallback(callbackType callback);
     private:
         // GLFW window
         GLFWwindow* mWindow;

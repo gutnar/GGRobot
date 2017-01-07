@@ -1,6 +1,7 @@
 #include <iostream>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <Tresholder.h>
 
 #include "Timer.h"
 #include "VideoCapture.h"
@@ -9,16 +10,26 @@
 
 using namespace gg;
 
+// Video capture
+VideoCapture video;
+
+// Handle keyboard events
+void onKeyPress(GLFWwindow* window, unsigned int codepoint)
+{
+    // Activate tresholding (T key)
+    if (codepoint == 116) {
+        Tresholder tresholder(video.getLatestFrame());
+    }
+}
+
+// Main
 int main()
 {
     // Control panel
-    ControlPanel controlPanel(1280, 720);
+    ControlPanel controlPanel(1280, 360);
 
-    // Video capture
-    VideoCapture video(0);
-
-    // Timer
-    Timer timer;
+    // Open video device
+    video.open(0);
 
     // Blob detector
     BlobDetector detector;
@@ -27,6 +38,9 @@ int main()
     controlPanel.addSource(video.getTextureID(), 0, 0, 640, 360);
     controlPanel.addSource(detector.getTextureID(), 640, 0, 640, 360);
 
+    // Keyboard input
+    controlPanel.setCharCallback(onKeyPress);
+
     // Loop until the user closes the window
     while (controlPanel.isOpen())
     {
@@ -34,7 +48,6 @@ int main()
         video.capture();
 
         // Find blobs
-        //detector.processImage(video.getTextureID());
         detector.processImage(video.getLatestFrame());
 
         // Redraw control panel

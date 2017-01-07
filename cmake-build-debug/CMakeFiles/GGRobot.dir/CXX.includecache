@@ -6,6 +6,12 @@
 
 #IncludeRegexTransform: 
 
+../include/Blob.h
+vector
+-
+opencv2/highgui.hpp
+-
+
 ../include/BlobDetector.h
 fcntl.h
 -
@@ -38,6 +44,14 @@ GLFW/glfw3.h
 GLFW/glfw3.h
 -
 
+../include/Tresholder.h
+cv.h
+-
+array
+-
+vector
+-
+
 ../include/VideoCapture.h
 iostream
 -
@@ -48,21 +62,9 @@ thread
 highgui.h
 -
 
-../lib/Blob.h
-vector
--
-opencv2/highgui.hpp
--
-
 /Users/gutnar/Projects/GGRobot/lib/Blob.cpp
 Blob.h
 /Users/gutnar/Projects/GGRobot/lib/Blob.h
-
-/Users/gutnar/Projects/GGRobot/lib/Blob.h
-vector
--
-opencv2/highgui.hpp
--
 
 /Users/gutnar/Projects/GGRobot/lib/BlobDetector.cpp
 BlobDetector.h
@@ -76,6 +78,12 @@ ControlPanel.h
 Timer.h
 /Users/gutnar/Projects/GGRobot/lib/Timer.h
 
+/Users/gutnar/Projects/GGRobot/lib/Tresholder.cpp
+highgui.h
+-
+Tresholder.h
+/Users/gutnar/Projects/GGRobot/lib/Tresholder.h
+
 /Users/gutnar/Projects/GGRobot/lib/VideoCapture.cpp
 VideoCapture.h
 /Users/gutnar/Projects/GGRobot/lib/VideoCapture.h
@@ -86,6 +94,8 @@ iostream
 GL/glew.h
 -
 GLFW/glfw3.h
+-
+Tresholder.h
 -
 Timer.h
 /Users/gutnar/Projects/GGRobot/tests/Timer.h

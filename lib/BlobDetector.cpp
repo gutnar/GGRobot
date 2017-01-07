@@ -1,9 +1,4 @@
-//
-// Created by Gutnar Leede on 06/12/2016.
-//
-
 #include "BlobDetector.h"
-
 
 namespace gg {
     BlobDetector::BlobDetector()
@@ -66,13 +61,15 @@ namespace gg {
         clReleaseContext(mCLContext);
     }
 
+    /*
     void BlobDetector::processImage(GLuint texture)
     {
 
 
     }
+     */
 
-    void BlobDetector::processImage(cv::Mat mat)
+    void BlobDetector::processImage(const cv::Mat &mat)
     {
         // Processed image
         cv::Mat processedMat;
@@ -159,7 +156,7 @@ namespace gg {
         clReleaseCommandQueue(commands);
 
         // Find blobs
-        //findBlobs(processedMat, out);
+        findBlobs(processedMat, out);
 
         /// TEXTURING
         // Bind to our texture handle
@@ -189,11 +186,14 @@ namespace gg {
         return mTextureID;
     }
 
-    void BlobDetector::findBlobs(cv::Mat mat, int* out) {
+    void BlobDetector::findBlobs(cv::Mat &mat, int* out) {
         int height = mat.rows;
         int width = mat.cols;
-        /// DETECT BLOBS OF SAME COLOR
-        std::vector<Blob> blobs;
+
+        // Clear previously detected blobs
+        mBlobs.clear();
+
+        // Detect blobs of same color
         std::vector<BlobLine> previousLines;
 
         for (int y = 0; y < height; ++y) {
@@ -221,13 +221,6 @@ namespace gg {
                                 continue;
                             }
 
-                            /*
-                            // Skip if lines do not touch
-                            if (previousLines[l].xi > line.xf || previousLines[l].xf < line.xi) {
-                                continue;
-                            }
-                             */
-
                             // Skip if touching is too small
                             int common = std::min(previousLines[l].xf, line.xf) - std::max(previousLines[l].xi, line.xi);
 
@@ -240,8 +233,8 @@ namespace gg {
                                 line.blobIndex = previousLines[l].blobIndex;
                                 //cout << line.blobIndex << endl;
                             } else if (line.blobIndex != previousLines[l].blobIndex) {
-                                blobs[line.blobIndex].addBlob(blobs[previousLines[l].blobIndex]);
-                                blobs[previousLines[l].blobIndex].mHidden = true;
+                                mBlobs[line.blobIndex].addBlob(mBlobs[previousLines[l].blobIndex]);
+                                mBlobs[previousLines[l].blobIndex].mHidden = true;
                                 previousLines[l].blobIndex = line.blobIndex;
                             }
                         }
@@ -249,12 +242,12 @@ namespace gg {
                         // Create new blob?
                         if (line.blobIndex == -1) {
                             Blob blob(lastColor);
-                            line.blobIndex = (int) blobs.size();
-                            blobs.push_back(blob);
+                            line.blobIndex = (int) mBlobs.size();
+                            mBlobs.push_back(blob);
                         }
 
                         // Add line to blob
-                        blobs[line.blobIndex].addLine(line);
+                        mBlobs[line.blobIndex].addLine(line);
 
                         // Add to current row
                         currentLines.push_back(line);
@@ -268,14 +261,14 @@ namespace gg {
             previousLines = currentLines;
         }
 
-        for (int i = 0; i < blobs.size(); ++i) {
-            cv::line(mat, cv::Point(blobs[i].mMinX, blobs[i].mMinY), cv::Point(blobs[i].mMaxX, blobs[i].mMinY),
+        for (int i = 0; i < mBlobs.size(); ++i) {
+            cv::line(mat, cv::Point(mBlobs[i].mMinX, mBlobs[i].mMinY), cv::Point(mBlobs[i].mMaxX, mBlobs[i].mMinY),
                      cv::Scalar(0, 0, 0));
-            cv::line(mat, cv::Point(blobs[i].mMinX, blobs[i].mMaxY), cv::Point(blobs[i].mMaxX, blobs[i].mMaxY),
+            cv::line(mat, cv::Point(mBlobs[i].mMinX, mBlobs[i].mMaxY), cv::Point(mBlobs[i].mMaxX, mBlobs[i].mMaxY),
                      cv::Scalar(0, 0, 0));
-            cv::line(mat, cv::Point(blobs[i].mMinX, blobs[i].mMinY), cv::Point(blobs[i].mMinX, blobs[i].mMaxY),
+            cv::line(mat, cv::Point(mBlobs[i].mMinX, mBlobs[i].mMinY), cv::Point(mBlobs[i].mMinX, mBlobs[i].mMaxY),
                      cv::Scalar(0, 0, 0));
-            cv::line(mat, cv::Point(blobs[i].mMaxX, blobs[i].mMinY), cv::Point(blobs[i].mMaxX, blobs[i].mMaxY),
+            cv::line(mat, cv::Point(mBlobs[i].mMaxX, mBlobs[i].mMinY), cv::Point(mBlobs[i].mMaxX, mBlobs[i].mMaxY),
                      cv::Scalar(0, 0, 0));
         }
     }

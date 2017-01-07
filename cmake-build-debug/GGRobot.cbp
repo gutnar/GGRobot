@@ -91,9 +91,6 @@
 		<Unit filename="/Users/gutnar/Projects/GGRobot/lib/Blob.cpp">
 			<Option target="GGRobot"/>
 		</Unit>
-		<Unit filename="/Users/gutnar/Projects/GGRobot/lib/Blob.h">
-			<Option target="GGRobot"/>
-		</Unit>
 		<Unit filename="/Users/gutnar/Projects/GGRobot/lib/BlobDetector.cpp">
 			<Option target="GGRobot"/>
 		</Unit>
@@ -101,6 +98,9 @@
 			<Option target="GGRobot"/>
 		</Unit>
 		<Unit filename="/Users/gutnar/Projects/GGRobot/lib/Timer.cpp">
+			<Option target="GGRobot"/>
+		</Unit>
+		<Unit filename="/Users/gutnar/Projects/GGRobot/lib/Tresholder.cpp">
 			<Option target="GGRobot"/>
 		</Unit>
 		<Unit filename="/Users/gutnar/Projects/GGRobot/lib/VideoCapture.cpp">

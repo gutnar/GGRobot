@@ -8,6 +8,7 @@ set(CMAKE_DEPENDS_CHECK_CXX
   "/Users/gutnar/Projects/GGRobot/lib/BlobDetector.cpp" "/Users/gutnar/Projects/GGRobot/cmake-build-debug/CMakeFiles/GGRobot.dir/lib/BlobDetector.cpp.o"
   "/Users/gutnar/Projects/GGRobot/lib/ControlPanel.cpp" "/Users/gutnar/Projects/GGRobot/cmake-build-debug/CMakeFiles/GGRobot.dir/lib/ControlPanel.cpp.o"
   "/Users/gutnar/Projects/GGRobot/lib/Timer.cpp" "/Users/gutnar/Projects/GGRobot/cmake-build-debug/CMakeFiles/GGRobot.dir/lib/Timer.cpp.o"
+  "/Users/gutnar/Projects/GGRobot/lib/Tresholder.cpp" "/Users/gutnar/Projects/GGRobot/cmake-build-debug/CMakeFiles/GGRobot.dir/lib/Tresholder.cpp.o"
   "/Users/gutnar/Projects/GGRobot/lib/VideoCapture.cpp" "/Users/gutnar/Projects/GGRobot/cmake-build-debug/CMakeFiles/GGRobot.dir/lib/VideoCapture.cpp.o"
   "/Users/gutnar/Projects/GGRobot/tests/main.cpp" "/Users/gutnar/Projects/GGRobot/cmake-build-debug/CMakeFiles/GGRobot.dir/tests/main.cpp.o"
   )

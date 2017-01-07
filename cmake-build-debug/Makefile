@@ -231,6 +231,33 @@ lib/Timer.cpp.s:
 	$(MAKE) -f CMakeFiles/GGRobot.dir/build.make CMakeFiles/GGRobot.dir/lib/Timer.cpp.s
 .PHONY : lib/Timer.cpp.s
 
+lib/Tresholder.o: lib/Tresholder.cpp.o
+
+.PHONY : lib/Tresholder.o
+
+# target to build an object file
+lib/Tresholder.cpp.o:
+	$(MAKE) -f CMakeFiles/GGRobot.dir/build.make CMakeFiles/GGRobot.dir/lib/Tresholder.cpp.o
+.PHONY : lib/Tresholder.cpp.o
+
+lib/Tresholder.i: lib/Tresholder.cpp.i
+
+.PHONY : lib/Tresholder.i
+
+# target to preprocess a source file
+lib/Tresholder.cpp.i:
+	$(MAKE) -f CMakeFiles/GGRobot.dir/build.make CMakeFiles/GGRobot.dir/lib/Tresholder.cpp.i
+.PHONY : lib/Tresholder.cpp.i
+
+lib/Tresholder.s: lib/Tresholder.cpp.s
+
+.PHONY : lib/Tresholder.s
+
+# target to generate assembly for a file
+lib/Tresholder.cpp.s:
+	$(MAKE) -f CMakeFiles/GGRobot.dir/build.make CMakeFiles/GGRobot.dir/lib/Tresholder.cpp.s
+.PHONY : lib/Tresholder.cpp.s
+
 lib/VideoCapture.o: lib/VideoCapture.cpp.o
 
 .PHONY : lib/VideoCapture.o
@@ -306,6 +333,9 @@ help:
 	@echo "... lib/Timer.o"
 	@echo "... lib/Timer.i"
 	@echo "... lib/Timer.s"
+	@echo "... lib/Tresholder.o"
+	@echo "... lib/Tresholder.i"
+	@echo "... lib/Tresholder.s"
 	@echo "... lib/VideoCapture.o"
 	@echo "... lib/VideoCapture.i"
 	@echo "... lib/VideoCapture.s"

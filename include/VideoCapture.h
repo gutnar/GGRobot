@@ -1,7 +1,3 @@
-//
-// Created by Gutnar Leede on 05/12/2016.
-//
-
 #ifndef GGROBOT_VIDEO_H
 #define GGROBOT_VIDEO_H
 
@@ -14,7 +10,10 @@ namespace gg {
     class VideoCapture
     {
     public:
-        /// @brief Video constructor
+        /// @brief Default constructor
+        VideoCapture();
+
+        /// @brief Video constructor that opens the device
         /// @param device Video capture device number
         VideoCapture(int device);
 
@@ -26,10 +25,10 @@ namespace gg {
         cv::Mat getLatestFrame();
 
         /// @brief Start capturing frames
-        void startCapture();
+        void open(int device);
 
         /// @brief Stop capturing frames
-        void stopCapture();
+        void close();
 
         /// @brief Get OpenGL texture ID
         GLuint getTextureID();

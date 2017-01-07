@@ -5,6 +5,7 @@ file(REMOVE_RECURSE
   "CMakeFiles/GGRobot.dir/lib/ControlPanel.cpp.o"
   "CMakeFiles/GGRobot.dir/lib/BlobDetector.cpp.o"
   "CMakeFiles/GGRobot.dir/lib/Blob.cpp.o"
+  "CMakeFiles/GGRobot.dir/lib/Tresholder.cpp.o"
   "GGRobot.pdb"
   "GGRobot"
 )

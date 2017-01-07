@@ -1,34 +1,37 @@
-//
-// Created by Gutnar Leede on 05/12/2016.
-//
-
 #include "VideoCapture.h"
 
 
 namespace gg {
+    /// Default constructor
+    VideoCapture::VideoCapture()
+    {
+    }
+
     /// Generates an OpenGL texture ID and starts capturing
     VideoCapture::VideoCapture(int device)
     {
-        glGenTextures(1, &mTextureID);
-        mDevice = device;
-        startCapture();
+        open(device);
     }
 
-    void VideoCapture::startCapture()
+    void VideoCapture::open(int device)
     {
-        // Open device
+        if (!mTextureID) {
+            glGenTextures(1, &mTextureID);
+        }
+
+        mDevice = device;
         mVideoCapture.open(mDevice);
 
     }
 
-    void VideoCapture::stopCapture()
+    void VideoCapture::close()
     {
         mVideoCapture.release();
     }
 
     VideoCapture::~VideoCapture()
     {
-        stopCapture();
+        close();
         glDeleteTextures(1, &mTextureID);
     }
 

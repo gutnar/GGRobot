@@ -1,10 +1,11 @@
-//
-// Created by Gutnar Leede on 05/12/2016.
-//
-
 #include "ControlPanel.h"
 
 namespace gg {
+    void character_callback(GLFWwindow* window, unsigned int codepoint)
+    {
+        printf("test %d", codepoint);
+    }
+
     ControlPanel::ControlPanel()
     {
         createWindow(640, 480, "Control panel");
@@ -103,6 +104,12 @@ namespace gg {
         // Remember window size
         mWindowWidth = windowWidth;
         mWindowHeight = windowHeight;
+    }
+
+    /// Set keyboard event callback
+    void ControlPanel::setCharCallback(callbackType callback)
+    {
+        glfwSetCharCallback(mWindow, callback);
     }
 
     /// Add a texture source onto the control panel with a certain size

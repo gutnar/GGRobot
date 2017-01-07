@@ -22,17 +22,17 @@ namespace gg {
         ~BlobDetector();
 
         /// @brief Process texture
-        void processImage(GLuint texture);
+        //void processImage(GLuint texture);
 
         /// @brief Process OpenCV material
-        void processImage(cv::Mat mat);
+        void processImage(const cv::Mat &mat);
 
         /// @brief Get OpenGL texture ID
         GLuint getTextureID();
 
     private:
         /// @brief Connect same color pixels into blobs
-        void findBlobs(cv::Mat mat, int* out);
+        void findBlobs(cv::Mat &mat, int* out);
 
         /// OpenGL
         // Shaders
@@ -64,6 +64,9 @@ namespace gg {
         cl_device_id mCLDeviceId;
         cl_program mCLProgram;
         cl_context mCLContext;
+
+        // Detected blobs
+        std::vector<Blob> mBlobs;
     };
 }
 
