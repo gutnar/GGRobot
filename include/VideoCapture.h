@@ -5,6 +5,8 @@
 #include <GLFW/glfw3.h>
 #include <thread>
 #include <highgui.h>
+#include <cv.h>
+
 
 namespace gg {
     class VideoCapture

@@ -3,8 +3,9 @@ __kernel void mark_pixels(__global const int *in, __global int *out)
     // Get pixel BGR color
     int x = get_global_id(0);
     int y = get_global_id(1);
-    int i = y * 640 + x;
-    int j = i * 3;
+
+    int i = (y*640 + x);
+    int j = i*3;
 
     int b = in[j + 0];
     int g = in[j + 1];
@@ -18,6 +19,9 @@ __kernel void mark_pixels(__global const int *in, __global int *out)
     int h;
     int s;
     int v = rgbMax;
+
+    //out[i] = v;
+    //return;
 
     if (v != 0)
     {

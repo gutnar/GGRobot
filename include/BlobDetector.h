@@ -13,6 +13,7 @@
 #include <cv.h>
 #include <fstream>
 #include "Blob.h"
+#include "CL.h"
 
 namespace gg {
     class BlobDetector
@@ -60,10 +61,8 @@ namespace gg {
         // OpenGL texture ID
         GLuint mTextureID;
 
-        // OpenCL
-        cl_device_id mCLDeviceId;
-        cl_program mCLProgram;
-        cl_context mCLContext;
+        // OpenCL instance
+        CL mCLImageProcessor;
 
         // Detected blobs
         std::vector<Blob> mBlobs;

@@ -48,6 +48,8 @@ namespace gg {
         // Capture frame
         mVideoCapture >> mLatestFrame;
 
+        cv::resize(mLatestFrame, mLatestFrame, cv::Size(640, 360), 0, 0, CV_INTER_LINEAR);
+
         // Bind to our texture handle
         glBindTexture(GL_TEXTURE_2D, mTextureID);
 

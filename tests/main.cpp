@@ -19,6 +19,22 @@ void onKeyPress(GLFWwindow* window, unsigned int codepoint)
     // Activate tresholding (T key)
     if (codepoint == 116) {
         Tresholder tresholder(video.getLatestFrame());
+    } else {
+        cv::Mat mat = video.getLatestFrame();
+
+        cv::Vec3b pixel = mat.at<cv::Vec3b>(0, 0);
+        std::cout << (int) pixel[0] << " " << (int) pixel[1] << " " << (int) pixel[2] << std::endl;
+
+        pixel = mat.at<cv::Vec3b>(0, 1);
+        std::cout << (int) pixel[0] << " " << (int) pixel[1] << " " << (int) pixel[2] << std::endl;
+
+        pixel = mat.at<cv::Vec3b>(1, 0);
+        std::cout << (int) pixel[0] << " " << (int) pixel[1] << " " << (int) pixel[2] << std::endl;
+
+        for (int i = 1280*3; i < 1280*3+16; ++i)
+        {
+            std::cout << (int) *(mat.ptr() + i) << std::endl;
+        }
     }
 }
 

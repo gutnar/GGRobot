@@ -6,79 +6,23 @@ namespace gg {
         // Generate OpenGL texture
         glGenTextures(1, &mTextureID);
 
-        /// OPENCL COMPILATION
-        int err;                            // error code returned from api calls
-
-        // Connect to a compute device
-        err = clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, 1, &mCLDeviceId, NULL);
-
-        if (err != CL_SUCCESS) {
-            printf("Error: Failed to create a device group!\n");
-            return;
-        }
-
-        // Create a compute context
-        mCLContext = clCreateContext(0, 1, &mCLDeviceId, NULL, NULL, &err);
-
-        if (!mCLContext) {
-            printf("Error: Failed to create a compute context!\n");
-            return;
-        }
-
-        // Kernel source
-        std::ifstream clFile("lib/BlobDetectorKernels.cl");
-        std::string clString(std::istreambuf_iterator<char>(clFile),
-                              (std::istreambuf_iterator<char>()));
-        const char* kernelSource = clString.c_str();
-
-        // Create the compute program from the source buffer
-        mCLProgram = clCreateProgramWithSource(mCLContext, 1, (const char **) & kernelSource, NULL, &err);
-
-        if (!mCLProgram)
-        {
-            printf("Error: Failed to create compute program!\n");
-            return;
-        }
-
-        // Build the program executable
-        err = clBuildProgram(mCLProgram, 0, NULL, NULL, NULL, NULL);
-
-        if (err != CL_SUCCESS)
-        {
-            size_t len;
-            char buffer[2048];
-
-            printf("Error: Failed to build program executable!\n");
-            clGetProgramBuildInfo(mCLProgram, mCLDeviceId, CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer, &len);
-            printf("%s\n", buffer);
-            exit(1);
-        }
+        // OpenCL compilation
+        mCLImageProcessor.compile("BlobDetectorKernels");
     }
 
     BlobDetector::~BlobDetector()
     {
-        clReleaseProgram(mCLProgram);
-        clReleaseContext(mCLContext);
+        //clReleaseProgram(mCLProgram);
+        //clReleaseContext(mCLContext);
     }
-
-    /*
-    void BlobDetector::processImage(GLuint texture)
-    {
-
-
-    }
-     */
 
     void BlobDetector::processImage(const cv::Mat &mat)
     {
         // Processed image
-        cv::Mat processedMat;
+        cv::Mat processedMat = mat.clone();
 
         // Resize image
-        cv::resize(mat, processedMat, cv::Size(640, 360), 0, 0, CV_INTER_LINEAR);
-
-        // Convert BGR to HSV
-        //cv::cvtColor(processedMat, processedMat, cv::COLOR_BGR2HSV);
+        //cv::resize(mat, processedMat, cv::Size(640, 360), 0, 0, CV_INTER_LINEAR);
 
         // Image size
         const int width = processedMat.cols;
@@ -102,28 +46,30 @@ namespace gg {
             }
         }
 
-        cl_mem bufferIn = clCreateBuffer(mCLContext, CL_MEM_READ_ONLY,  sizeof(int)*numberOfPixels*3, NULL, NULL);
+        // Create kernel
+        mCLImageProcessor.setKernel("mark_pixels");
+
+        // Create OpenCL read-only buffer
+        CL::Buffer bufferIn = mCLImageProcessor.createReadBuffer(sizeof(int)*numberOfPixels*3, 0);
+        mCLImageProcessor.setBufferData(bufferIn, in);
+        mCLImageProcessor.setArg(0, sizeof(cl_mem), &bufferIn);
 
         // Output
         int out[numberOfPixels];
 
-        cl_mem bufferOut = clCreateBuffer(mCLContext, CL_MEM_WRITE_ONLY, sizeof(int)*numberOfPixels, NULL, NULL);
+        // Create OpenCL write-only buffer
+        CL::Buffer bufferOut = mCLImageProcessor.createWriteBuffer(sizeof(int)*numberOfPixels, 1);
+        mCLImageProcessor.setBufferData(bufferOut, &out);
+        mCLImageProcessor.setArg(1, sizeof(cl_mem), &bufferOut);
 
-        // Kernel
-        cl_kernel kernel = clCreateKernel(mCLProgram, "mark_pixels", &err);
-        clSetKernelArg(kernel, 0, sizeof(cl_mem), &bufferIn);
-        clSetKernelArg(kernel, 1, sizeof(cl_mem), &bufferOut);
-
-        // Commands
-        cl_command_queue commands = clCreateCommandQueue(mCLContext, mCLDeviceId, 0, &err);
-        clEnqueueWriteBuffer(commands, bufferIn, CL_TRUE, 0, sizeof(int)*numberOfPixels*3, in, 0, NULL, NULL);
-        clEnqueueNDRangeKernel(commands, kernel, 2, NULL, dimensions, NULL, 0, NULL, NULL);
-        clFinish(commands);
-        clEnqueueReadBuffer(commands, bufferOut, CL_TRUE, 0, sizeof(int) * numberOfPixels, out, 0, NULL, NULL);
+        // Run OpenCL code (Send data from host to device)
+        mCLImageProcessor.run(2, dimensions);
 
         /// MARK PIXELS
         for (int y = 0; y < height; ++y) {
             for (int x = 0; x < width; ++x) {
+                //processedMat.at<cv::Vec3b>(y, x) = cv::Vec3b(out[y*width+x], out[y*width+x], out[y*width+x]);
+                //continue;
                 switch (out[y*width + x]) {
                     // white
                     case 0:
@@ -150,10 +96,12 @@ namespace gg {
         }
 
         // Clean up
+        /*
         clReleaseMemObject(bufferIn);
         clReleaseMemObject(bufferOut);
         clReleaseKernel(kernel);
         clReleaseCommandQueue(commands);
+         */
 
         // Find blobs
         findBlobs(processedMat, out);

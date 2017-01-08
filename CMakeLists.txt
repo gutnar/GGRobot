@@ -6,7 +6,7 @@ project(GGRobot)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 # Sources
-set(SOURCE_FILES tests/main.cpp lib/Timer.cpp lib/VideoCapture.cpp lib/ControlPanel.cpp lib/BlobDetector.cpp lib/Blob.cpp lib/Tresholder.cpp)
+set(SOURCE_FILES tests/main.cpp lib/Timer.cpp lib/VideoCapture.cpp lib/ControlPanel.cpp lib/BlobDetector.cpp lib/Blob.cpp lib/Tresholder.cpp lib/CL.cpp)
 add_executable(GGRobot ${SOURCE_FILES})
 
 # Link OpenCL
