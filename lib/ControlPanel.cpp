@@ -147,6 +147,12 @@ namespace gg {
         mSources.push_back(source);
     }
 
+    /// Add a renderable object onto the control panel
+    void ControlPanel::addSource(Renderable &renderable, int leftOffset, int topOffset, int width, int height)
+    {
+        mRenderables.push_back(&renderable);
+    }
+
     /// Check if the window is open
     bool ControlPanel::isOpen()
     {
@@ -158,6 +164,11 @@ namespace gg {
     {
         // Clear
         glClear(GL_COLOR_BUFFER_BIT);
+
+        // Render objects
+        for (int i = 0; i < mRenderables.size(); ++i) {
+            mRenderables[i]->render();
+        }
 
         // Draw source images
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mSourceImageElementBufferObject);

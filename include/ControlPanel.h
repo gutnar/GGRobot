@@ -5,6 +5,7 @@
 #include <vector>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include "Renderable.h"
 
 namespace gg {
     // Callback function type
@@ -30,13 +31,21 @@ namespace gg {
         /// @param windowTitle Window title
         ControlPanel(int windowWidth, int windowHeight, const char* windowTitle);
 
-        /// @brief Add a source onto the control panel
+        /// @brief Add a texture source onto the control panel
         /// @param textureID OpenGL texture ID
         /// @param leftOffset Offset from left side of the window in pixels
         /// @param topOffset Offset from top side of the window in pixels
         /// @param width Image width in pixels on control panel
         /// @param height Image height in pixels on control panel
         void addSource(GLuint textureID, int leftOffset, int topOffset, int width, int height);
+
+        /// @brief Add a renderable object onto the control panel
+        /// @param renderable Renderable object
+        /// @param leftOffset Offset from left side of the window in pixels
+        /// @param topOffset Offset from top side of the window in pixels
+        /// @param width Image width in pixels on control panel
+        /// @param height Image height in pixels on control panel
+        void addSource(Renderable &renderable, int leftOffset, int topOffset, int width, int height);
 
         /// @brief Chek if the window open
         /// @return True if the window is open or false
@@ -91,6 +100,9 @@ namespace gg {
 
         // Sources
         std::vector<SourceImage> mSources;
+
+        // Renderable objects
+        std::vector<Renderable*> mRenderables;
     };
 }
 

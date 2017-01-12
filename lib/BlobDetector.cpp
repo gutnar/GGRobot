@@ -1,17 +1,37 @@
 #include "BlobDetector.h"
 
 namespace gg {
-    BlobDetector::BlobDetector()
+    BlobDetector::BlobDetector(int width, int height)
     {
         // Generate OpenGL texture
         glGenTextures(1, &mTextureID);
 
+        // Image size
+        mWidth = width;
+        mHeight = height;
+        mNumberOfPixels = mWidth * mHeight;
+
+        // Output array
+        mColorMap = new int[mNumberOfPixels];
+
         // OpenCL compilation
         mCLImageProcessor.compile("BlobDetectorKernels");
+
+        // Create kernel
+        mCLImageProcessor.setKernel("mark_pixels");
+
+        // Create OpenCL read-only buffer
+        mBufferIn = mCLImageProcessor.createReadBuffer(sizeof(int)*mNumberOfPixels*3, 0);
+        mCLImageProcessor.setArg(0, sizeof(cl_mem), &mBufferIn);
+
+        // Create OpenCL write-only buffer
+        mBufferOut = mCLImageProcessor.createWriteBuffer(sizeof(int)*mNumberOfPixels, 1);
+        mCLImageProcessor.setArg(1, sizeof(cl_mem), &mBufferOut);
     }
 
     BlobDetector::~BlobDetector()
     {
+        delete[] mColorMap;
         //clReleaseProgram(mCLProgram);
         //clReleaseContext(mCLContext);
     }
@@ -21,56 +41,20 @@ namespace gg {
         // Processed image
         cv::Mat processedMat = mat.clone();
 
-        // Resize image
-        //cv::resize(mat, processedMat, cv::Size(640, 360), 0, 0, CV_INTER_LINEAR);
-
-        // Image size
-        const int width = processedMat.cols;
-        const int height = processedMat.rows;
-        const int numberOfPixels = width*height;
-        const size_t dimensions[2] = {(size_t) width, (size_t) height};
-
-        /// OPENCL
-        int err;
-
-        // Input
-        int in[numberOfPixels*3];
-
-        for (int y = 0; y < height; ++y) {
-            for (int x = 0; x < width; ++x) {
-                cv::Vec3b pixel = processedMat.at<cv::Vec3b>(y, x);
-
-                in[(y*width + x)*3 + 0] = pixel[0];
-                in[(y*width + x)*3 + 1] = pixel[1];
-                in[(y*width + x)*3 + 2] = pixel[2];
-            }
-        }
-
-        // Create kernel
-        mCLImageProcessor.setKernel("mark_pixels");
-
-        // Create OpenCL read-only buffer
-        CL::Buffer bufferIn = mCLImageProcessor.createReadBuffer(sizeof(int)*numberOfPixels*3, 0);
-        mCLImageProcessor.setBufferData(bufferIn, in);
-        mCLImageProcessor.setArg(0, sizeof(cl_mem), &bufferIn);
-
-        // Output
-        int out[numberOfPixels];
-
-        // Create OpenCL write-only buffer
-        CL::Buffer bufferOut = mCLImageProcessor.createWriteBuffer(sizeof(int)*numberOfPixels, 1);
-        mCLImageProcessor.setBufferData(bufferOut, &out);
-        mCLImageProcessor.setArg(1, sizeof(cl_mem), &bufferOut);
+        // Write image data to input buffer
+        mCLImageProcessor.setBufferData(mBufferIn, processedMat.ptr());
 
         // Run OpenCL code (Send data from host to device)
-        mCLImageProcessor.run(2, dimensions);
+        const size_t workSize[1] = {(size_t) mNumberOfPixels};
+        mCLImageProcessor.setBufferData(mBufferOut, &*mColorMap);
+        mCLImageProcessor.run(1, workSize);
 
         /// MARK PIXELS
-        for (int y = 0; y < height; ++y) {
-            for (int x = 0; x < width; ++x) {
+        for (int y = 0; y < mHeight; ++y) {
+            for (int x = 0; x < mWidth; ++x) {
                 //processedMat.at<cv::Vec3b>(y, x) = cv::Vec3b(out[y*width+x], out[y*width+x], out[y*width+x]);
                 //continue;
-                switch (out[y*width + x]) {
+                switch (mColorMap[y*mWidth + x]) {
                     // white
                     case 0:
                         processedMat.at<cv::Vec3b>(y, x) = cv::Vec3b(255, 255, 255);
@@ -104,7 +88,7 @@ namespace gg {
          */
 
         // Find blobs
-        findBlobs(processedMat, out);
+        findBlobs();
 
         /// TEXTURING
         // Bind to our texture handle
@@ -122,37 +106,36 @@ namespace gg {
         glTexImage2D(GL_TEXTURE_2D,     // Type of texture
                      0,                 // Pyramid level (for mip-mapping) - 0 is the top level
                      GL_RGB,            // Internal colour format to convert to
-                     width,          // Image width
-                     height,          // Image height
+                     mWidth,          // Image width
+                     mHeight,          // Image height
                      0,                 // Border width in pixels (can either be 1 or 0)
                      GL_BGR, // Input image format (i.e. GL_RGB, GL_RGBA, GL_BGR etc.)
                      GL_UNSIGNED_BYTE,  // Image data type
                      processedMat.ptr());        // The actual image data itself
+
+        //cv::imshow("Blob detector", processedMat);
     }
 
     GLuint BlobDetector::getTextureID() {
         return mTextureID;
     }
 
-    void BlobDetector::findBlobs(cv::Mat &mat, int* out) {
-        int height = mat.rows;
-        int width = mat.cols;
-
+    void BlobDetector::findBlobs() {
         // Clear previously detected blobs
         mBlobs.clear();
 
         // Detect blobs of same color
         std::vector<BlobLine> previousLines;
 
-        for (int y = 0; y < height; ++y) {
+        for (int y = 0; y < mHeight; ++y) {
             std::vector<BlobLine> currentLines;
 
-            int lastColor = out[y*width];
+            int lastColor = mColorMap[y*mWidth];
             int beginColorIndex = 0;
 
-            for (int x = 1; x < width + 1; ++x) {
-                int i = y*width + x;
-                int currentColor = (x == width) ? -1 : out[i];
+            for (int x = 1; x < mWidth + 1; ++x) {
+                int i = y*mWidth + x;
+                int currentColor = (x == mWidth) ? -1 : mColorMap[i];
 
                 if (lastColor != currentColor) {
                     if ((lastColor == 1 || lastColor == 2 || lastColor == 5) && x - 1 - beginColorIndex > 1) {//} || out[i] == 2) {
@@ -209,6 +192,7 @@ namespace gg {
             previousLines = currentLines;
         }
 
+        /*
         for (int i = 0; i < mBlobs.size(); ++i) {
             cv::line(mat, cv::Point(mBlobs[i].mMinX, mBlobs[i].mMinY), cv::Point(mBlobs[i].mMaxX, mBlobs[i].mMinY),
                      cv::Scalar(0, 0, 0));
@@ -219,5 +203,35 @@ namespace gg {
             cv::line(mat, cv::Point(mBlobs[i].mMaxX, mBlobs[i].mMinY), cv::Point(mBlobs[i].mMaxX, mBlobs[i].mMaxY),
                      cv::Scalar(0, 0, 0));
         }
+         */
+    }
+
+    void BlobDetector::render()
+    {
+        /*
+        // Bind to our texture handle
+        glBindTexture(GL_TEXTURE_2D, mTextureID);
+
+        // Set texture interpolation methods for minification and magnification
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+        // Set texture clamping method
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+
+        // Create the texture
+        glTexImage2D(GL_TEXTURE_2D,     // Type of texture
+                     0,                 // Pyramid level (for mip-mapping) - 0 is the top level
+                     GL_RED,            // Internal colour format to convert to
+                     mWidth,          // Image width
+                     mHeight,          // Image height
+                     0,                 // Border width in pixels (can either be 1 or 0)
+                     GL_RED, // Input image format (i.e. GL_RGB, GL_RGBA, GL_BGR etc.)
+                     GL_UNSIGNED_BYTE,  // Image data type
+                     mColorMap);        // The actual image data itself
+                     */
+
+
     }
 }

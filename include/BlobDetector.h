@@ -14,12 +14,18 @@
 #include <fstream>
 #include "Blob.h"
 #include "CL.h"
+#include "Renderable.h"
 
 namespace gg {
-    class BlobDetector
+    class BlobDetector : public Renderable
     {
     public:
-        BlobDetector();
+        /// @brief Default constructor
+        /// @param width Image width to be processed
+        /// @param height Image height to be processed
+        BlobDetector(int width, int height);
+
+        /// @brief Clean up OpenCL buffers
         ~BlobDetector();
 
         /// @brief Process texture
@@ -31,9 +37,24 @@ namespace gg {
         /// @brief Get OpenGL texture ID
         GLuint getTextureID();
 
+        /// @brief Render
+        void render();
+
     private:
         /// @brief Connect same color pixels into blobs
-        void findBlobs(cv::Mat &mat, int* out);
+        void findBlobs();
+
+        // Image size
+        int mWidth;
+        int mHeight;
+        int mNumberOfPixels;
+
+        // OpenCL buffers
+        CL::Buffer mBufferIn;
+        CL::Buffer mBufferOut;
+
+        // OpenCL output
+        int* mColorMap;
 
         /// OpenGL
         // Shaders

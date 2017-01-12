@@ -2,15 +2,31 @@
 #include "Tresholder.h"
 
 namespace gg {
-    Tresholder::Tresholder(const cv::Mat &mat)
-    {
-        mMat = mat;
-        mNumberOfPixels = mMat.rows * mMat.cols;
-        mWorkSize[0] = (size_t) mNumberOfPixels;
+    cv::Mat Tresholder::mMat;
+    cv::Mat Tresholder::mTest;
+    int Tresholder::mNumberOfCentroids = 10;
+    int Tresholder::mSampleSize;
+    int *Tresholder::mClusterMap;
+    float *Tresholder::mCentroids;
+    std::vector<int> Tresholder::mSelectedCentroids;
 
+    Tresholder::Tresholder()
+    {
         // OpenCL compilation
         mCLTreshold.compile("TresholdKernels");
+    }
 
+    void Tresholder::processImage(const cv::Mat &mat)
+    {
+        // Image data
+        mMat = mat;
+        mNumberOfPixels = mMat.rows * mMat.cols;
+
+        // Clear selected centroids
+        mSelectedCentroids.clear();
+
+        // Run K-means algorithm
+        mWorkSize[0] = (size_t) mNumberOfPixels;
         kMeans();
     }
 
@@ -21,12 +37,12 @@ namespace gg {
         const int height = mMat.rows;
 
         // Initializing centroids
-        const int numberOfCentroids = 10;
-        float centroids[numberOfCentroids * 3];
+        const int numberOfCentroids = mNumberOfCentroids;
+        mCentroids = new float[numberOfCentroids * 3];
 
         for (int i = 0; i < numberOfCentroids * 3; ++i)
         {
-            centroids[i] = rand() % 255;
+            mCentroids[i] = rand() % 255;
         }
 
         // Input
@@ -45,10 +61,10 @@ namespace gg {
         }
 
         // Output
-        int clusterMap[mNumberOfPixels];
+        mClusterMap = new int[mNumberOfPixels];
 
         // Iterations
-        for (int n = 0; n < 10; ++n)
+        for (int n = 0; n < 20; ++n)
         {
             // Create kernel
             mCLTreshold.setKernel("findClosestCentroid");
@@ -60,7 +76,7 @@ namespace gg {
 
             // Create OpenCL read-only buffer for centroids
             CL::Buffer bufferCentroids = mCLTreshold.createReadBuffer(sizeof(float) * numberOfCentroids * 3, 1);
-            mCLTreshold.setBufferData(bufferCentroids, centroids);
+            mCLTreshold.setBufferData(bufferCentroids, mCentroids);
             mCLTreshold.setArg(1, sizeof(cl_mem), &bufferCentroids);
 
             // Send number of centroids to GPU
@@ -68,7 +84,7 @@ namespace gg {
 
             // Create OpenCL write-only buffer
             CL::Buffer bufferCluster = mCLTreshold.createWriteBuffer(sizeof(int) * mNumberOfPixels, 3);
-            mCLTreshold.setBufferData(bufferCluster, &clusterMap);
+            mCLTreshold.setBufferData(bufferCluster, &*mClusterMap);
             mCLTreshold.setArg(3, sizeof(cl_mem), &bufferCluster);
 
             // Run OpenCL code
@@ -79,9 +95,9 @@ namespace gg {
 
             for (int i = 0; i < numberOfCentroids; ++i)
             {
-                centroids[i * 3 + 0] = 0;
-                centroids[i * 3 + 1] = 0;
-                centroids[i * 3 + 2] = 0;
+                mCentroids[i * 3 + 0] = 0;
+                mCentroids[i * 3 + 1] = 0;
+                mCentroids[i * 3 + 2] = 0;
                 centroidMembers[i] = 0;
             }
 
@@ -90,11 +106,11 @@ namespace gg {
             {
                 for (int y = 0; y < height; ++y)
                 {
-                    int c = clusterMap[y * width + x];
+                    int c = mClusterMap[y * width + x];
                     cv::Vec3b pixel = mMat.at<cv::Vec3b>(y, x);
-                    centroids[c * 3] += pixel[0];
-                    centroids[c * 3 + 1] += pixel[1];
-                    centroids[c * 3 + 2] += pixel[2];
+                    mCentroids[c * 3] += pixel[0];
+                    mCentroids[c * 3 + 1] += pixel[1];
+                    mCentroids[c * 3 + 2] += pixel[2];
                     centroidMembers[c]++;
                 }
             }
@@ -103,33 +119,193 @@ namespace gg {
             {
                 if (centroidMembers[i] >= 1)
                 {
-                    centroids[i * 3] /= centroidMembers[i];
-                    centroids[i * 3 + 1] /= centroidMembers[i];
-                    centroids[i * 3 + 2] /= centroidMembers[i];
+                    mCentroids[i * 3 + 0] /= centroidMembers[i];
+                    mCentroids[i * 3 + 1] /= centroidMembers[i];
+                    mCentroids[i * 3 + 2] /= centroidMembers[i];
                 } else
                 {
-                    centroids[i * 3] = 0;
-                    centroids[i * 3 + 1] = 0;
-                    centroids[i * 3 + 2] = 0;
+                    mCentroids[i * 3 + 0] = 0;
+                    mCentroids[i * 3 + 1] = 0;
+                    mCentroids[i * 3 + 2] = 0;
                 }
             }
         }
 
+        // Sample size
+        mSampleSize = mMat.cols / numberOfCentroids;
+
         // Test
-        cv::Mat test(mMat.rows, mMat.cols, CV_8UC3, cv::Scalar(0, 0, 0));
+        cv::Mat test(mMat.rows + mSampleSize, mMat.cols, CV_8UC3, cv::Scalar(0, 0, 0));
+
+        for (int x = 0; x < width; ++x)
+        {
+            for (int y = 0; y < height; ++y)
+            {
+                int c = mClusterMap[y * width + x];
+                test.at<cv::Vec3b>(y, x) = cv::Vec3b((uchar) mCentroids[c * 3], (uchar) mCentroids[c * 3 + 1],
+                                                     (uchar) mCentroids[c * 3 + 2]);
+            }
+        }
 
         for (int i = 0; i < numberOfCentroids; ++i)
         {
-            for (int x = i * 50; x < (i + 1) * 50; ++x)
+            for (int x = i * mSampleSize; x < (i + 1) * mSampleSize; ++x)
             {
-                for (int y = 0; y < 50; ++y)
+                for (int y = mMat.rows + 1; y < test.rows; ++y)
                 {
-                    test.at<cv::Vec3b>(y, x) = cv::Vec3b((uchar) centroids[i * 3], (uchar) centroids[i * 3 + 1],
-                                                         (uchar) centroids[i * 3 + 2]);
+                    test.at<cv::Vec3b>(y, x) = cv::Vec3b((uchar) mCentroids[i * 3], (uchar) mCentroids[i * 3 + 1],
+                                                         (uchar) mCentroids[i * 3 + 2]);
                 }
             }
         }
 
-        cv::imshow("test", test);
+        mTest = test;
+
+        // User interface
+        cv::imshow("Treshold", test);
+        cv::setMouseCallback("Treshold", mouseEventHandler, this);
+    }
+
+    void Tresholder::onMouse(int event, int x, int y)
+    {
+        if (event == cv::EVENT_LBUTTONDOWN && y > mMat.rows)
+        {
+            // Toggle selection
+            int centroidIndex = x / mSampleSize;
+            bool selected = false;
+
+            for (int i = 0; i < mSelectedCentroids.size(); ++i)
+            {
+                if (mSelectedCentroids[i] == centroidIndex)
+                {
+                    selected = true;
+                    mSelectedCentroids.erase(mSelectedCentroids.begin() + i);
+                    break;
+                }
+            }
+
+            if (!selected)
+            {
+                mSelectedCentroids.push_back(centroidIndex);
+            }
+
+            // Update test image
+            for (int x = 0; x < mMat.cols; ++x)
+            {
+                for (int y = 0; y < mMat.rows; ++y)
+                {
+                    int c = mClusterMap[y * mMat.cols + x];
+                    bool selected = mSelectedCentroids.empty();
+
+                    for (int i = 0; i < mSelectedCentroids.size(); ++i)
+                    {
+                        if (mSelectedCentroids[i] == c)
+                        {
+                            selected = true;
+                            break;
+                        }
+                    }
+
+                    if (selected)
+                    {
+                        mTest.at<cv::Vec3b>(y, x) = cv::Vec3b((uchar) mCentroids[c * 3], (uchar) mCentroids[c * 3 + 1],
+                                                              (uchar) mCentroids[c * 3 + 2]);
+                    } else
+                    {
+                        mTest.at<cv::Vec3b>(y, x) = cv::Vec3b(0, 0, 0);
+                    }
+                }
+            }
+
+            // Draw samples
+            for (int i = 0; i < mNumberOfCentroids; ++i)
+            {
+                for (int x = i * mSampleSize; x < (i + 1) * mSampleSize; ++x)
+                {
+                    for (int y = mMat.rows + 1; y < mTest.rows; ++y)
+                    {
+                        mTest.at<cv::Vec3b>(y, x) = cv::Vec3b((uchar) mCentroids[i * 3], (uchar) mCentroids[i * 3 + 1],
+                                                              (uchar) mCentroids[i * 3 + 2]);
+                    }
+                }
+            }
+
+            // Mark selected centroids
+            for (int i = 0; i < mSelectedCentroids.size(); ++i)
+            {
+                cv::putText(mTest, std::to_string(i), cv::Point(mSelectedCentroids[i] * mSampleSize + mSampleSize / 2,
+                                                                mMat.rows + mSampleSize / 2), 1, 1,
+                            cv::Scalar(255, 255, 255));
+            }
+
+            // Render
+            cv::imshow("Treshold", mTest);
+        }
+    }
+
+    void Tresholder::mouseEventHandler(int event, int x, int y, int flags, void *userdata)
+    {
+        Tresholder *tresholder = reinterpret_cast<Tresholder *>(userdata);
+        tresholder->onMouse(event, x, y);
+    }
+
+    void Tresholder::save()
+    {
+        // Close window
+        cv::destroyWindow("Treshold");
+
+        // Get the cluster color ranges
+        int min[mNumberOfCentroids][3];
+        int max[mNumberOfCentroids][3];
+
+        for (int i = 0; i < mNumberOfCentroids; ++i)
+        {
+            for (int j = 0; j < 3; ++j)
+            {
+                min[i][j] = 255;
+                max[i][j] = 0;
+            }
+        }
+
+        for (int x = 0; x < mMat.cols; ++x)
+        {
+            for (int y = 0; y < mMat.rows; ++y)
+            {
+                int c = mClusterMap[y * mMat.cols + x];
+                cv::Vec3b pixel = mMat.at<cv::Vec3b>(y, x);
+
+                for (int i = 0; i < 3; ++i)
+                {
+                    if (pixel[i] < min[c][i])
+                    {
+                        min[c][i] = pixel[i];
+                    }
+
+                    if (pixel[i] > max[c][i])
+                    {
+                        max[c][i] = pixel[i];
+                    }
+                }
+            }
+        }
+
+        // Write to file
+        std::ofstream file;
+        file.open("config/colors.txt");
+
+        // Write number of colors
+        file << mSelectedCentroids.size() << "\n";
+
+        for (int i = 0; i < mSelectedCentroids.size(); ++i)
+        {
+            int c = mSelectedCentroids[i];
+
+            file << min[c][0] << " " << max[c][0] << " " << min[c][1]
+                 << " " << max[c][1] << " "
+                 << min[c][2] << " "
+                 << max[c][2] << "\n";
+        }
+
+        file.close();
     }
 }

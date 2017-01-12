@@ -120,7 +120,7 @@ namespace gg {
         bufferArgument.flags = CL_MEM_WRITE_ONLY;
         mBufferArguments.push_back(bufferArgument);
 
-        setArg(argIndex, sizeof(CL::Buffer), &bufferArgument.buffer);
+        //setArg(argIndex, sizeof(cl_mem), &bufferArgument.buffer);
 
         return bufferArgument.buffer;
     }
@@ -164,5 +164,7 @@ namespace gg {
                 clEnqueueReadBuffer(commands, mBufferArguments[i].buffer, CL_TRUE, 0, mBufferArguments[i].size, mBufferArguments[i].writePtr, 0, NULL, NULL);
             }
         }
+
+        clReleaseCommandQueue(commands);
     }
 }

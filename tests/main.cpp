@@ -13,28 +13,26 @@ using namespace gg;
 // Video capture
 VideoCapture video;
 
+// Tresholder
+Tresholder tresholder;
+
 // Handle keyboard events
 void onKeyPress(GLFWwindow* window, unsigned int codepoint)
 {
-    // Activate tresholding (T key)
-    if (codepoint == 116) {
-        Tresholder tresholder(video.getLatestFrame());
-    } else {
-        cv::Mat mat = video.getLatestFrame();
+    // Activate tresholding (T)
+    if (codepoint == 116)
+    {
+        tresholder.processImage(video.getLatestFrame());
+    }
 
-        cv::Vec3b pixel = mat.at<cv::Vec3b>(0, 0);
-        std::cout << (int) pixel[0] << " " << (int) pixel[1] << " " << (int) pixel[2] << std::endl;
+    // Save tresholded colors (S)
+    else if (codepoint == 115) {
+        tresholder.save();
+    }
 
-        pixel = mat.at<cv::Vec3b>(0, 1);
-        std::cout << (int) pixel[0] << " " << (int) pixel[1] << " " << (int) pixel[2] << std::endl;
-
-        pixel = mat.at<cv::Vec3b>(1, 0);
-        std::cout << (int) pixel[0] << " " << (int) pixel[1] << " " << (int) pixel[2] << std::endl;
-
-        for (int i = 1280*3; i < 1280*3+16; ++i)
-        {
-            std::cout << (int) *(mat.ptr() + i) << std::endl;
-        }
+    // Show pressed key
+    else {
+        std::cout << codepoint << std::endl;
     }
 }
 
@@ -48,11 +46,14 @@ int main()
     video.open(0);
 
     // Blob detector
-    BlobDetector detector;
+    BlobDetector detector(640, 360);
 
     // Add video source onto the control panel
     controlPanel.addSource(video.getTextureID(), 0, 0, 640, 360);
-    controlPanel.addSource(detector.getTextureID(), 640, 0, 640, 360);
+
+    // Add blob detector view onto the control panel
+    //controlPanel.addSource(detector, 640, 0, 640, 360);
+    //controlPanel.addSource(detector.getTextureID(), 640, 0, 640, 360);
 
     // Keyboard input
     controlPanel.setCharCallback(onKeyPress);
