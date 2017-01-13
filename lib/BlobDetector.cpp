@@ -6,11 +6,30 @@ namespace gg {
         // Generate OpenGL texture
         glGenTextures(1, &mTextureID);
 
+        /// GET CENTROIDS FROM THE FILE
+        // Open the file
+        std::ifstream centroidsFile("config/colors.txt");
+
+        centroidsFile >> mNumberOfCentroids;
+
+        int x;
+        int i = 0;
+        mCentroids = new int[mNumberOfCentroids*9];
+
+        while (centroidsFile >> x)
+        {
+            mCentroids[i] = x;
+            ++i;
+        }
+
+        centroidsFile.close();
+
         // Image size
         mWidth = width;
         mHeight = height;
         mNumberOfPixels = mWidth * mHeight;
 
+        /// OPENCL
         // Output array
         mColorMap = new int[mNumberOfPixels];
 
@@ -20,13 +39,21 @@ namespace gg {
         // Create kernel
         mCLImageProcessor.setKernel("mark_pixels");
 
-        // Create OpenCL read-only buffer
+        // Create OpenCL read-only buffer for image
         mBufferIn = mCLImageProcessor.createReadBuffer(sizeof(int)*mNumberOfPixels*3, 0);
         mCLImageProcessor.setArg(0, sizeof(cl_mem), &mBufferIn);
 
+        // Create OpenCL read-only buffer for centroids
+        mBufferCentroids = mCLImageProcessor.createReadBuffer(sizeof(int)*mNumberOfCentroids*9, 1);
+        mCLImageProcessor.setBufferData(mBufferCentroids, &*mCentroids);
+        mCLImageProcessor.setArg(1, sizeof(cl_mem), &mBufferCentroids);
+
+        // Set OpenCL argument numberOfCentroids
+        mCLImageProcessor.setArg(2, sizeof(cl_mem), &mNumberOfCentroids);
+
         // Create OpenCL write-only buffer
-        mBufferOut = mCLImageProcessor.createWriteBuffer(sizeof(int)*mNumberOfPixels, 1);
-        mCLImageProcessor.setArg(1, sizeof(cl_mem), &mBufferOut);
+        mBufferOut = mCLImageProcessor.createWriteBuffer(sizeof(int)*mNumberOfPixels, 3);
+        mCLImageProcessor.setArg(3, sizeof(cl_mem), &mBufferOut);
     }
 
     BlobDetector::~BlobDetector()
@@ -50,11 +77,31 @@ namespace gg {
         mCLImageProcessor.run(1, workSize);
 
         /// MARK PIXELS
-        for (int y = 0; y < mHeight; ++y) {
-            for (int x = 0; x < mWidth; ++x) {
+        for (int y = 0; y < mHeight; ++y)
+        {
+            for (int x = 0; x < mWidth; ++x)
+            {
+                int c = mColorMap[y * mWidth + x] - 1;
+
+                if (c == -1)
+                {
+                    processedMat.at<cv::Vec3b>(y, x) = cv::Vec3b(0, 0, 0);
+                } else {
+                    //std::cout << c << " " << mCentroids[c*9 + 6] << " " << mCentroids[c*9 + 7] << " " << mCentroids[c*9 + 8] << "\n";
+
+                    processedMat.at<cv::Vec3b>(y, x) = cv::Vec3b(
+                            (uchar) mCentroids[c*9 + 6],
+                            (uchar) mCentroids[c*9 + 7],
+                            (uchar) mCentroids[c*9 + 8]
+                    );
+                }
+
                 //processedMat.at<cv::Vec3b>(y, x) = cv::Vec3b(out[y*width+x], out[y*width+x], out[y*width+x]);
                 //continue;
-                switch (mColorMap[y*mWidth + x]) {
+
+                /*
+                switch (mColorMap[y * mWidth + x])
+                {
                     // white
                     case 0:
                         processedMat.at<cv::Vec3b>(y, x) = cv::Vec3b(255, 255, 255);
@@ -76,6 +123,7 @@ namespace gg {
                         processedMat.at<cv::Vec3b>(y, x) = cv::Vec3b(0, 255, 0);
                         break;
                 }
+                 */
             }
         }
 
@@ -116,29 +164,35 @@ namespace gg {
         //cv::imshow("Blob detector", processedMat);
     }
 
-    GLuint BlobDetector::getTextureID() {
+    GLuint BlobDetector::getTextureID()
+    {
         return mTextureID;
     }
 
-    void BlobDetector::findBlobs() {
+    void BlobDetector::findBlobs()
+    {
         // Clear previously detected blobs
         mBlobs.clear();
 
         // Detect blobs of same color
         std::vector<BlobLine> previousLines;
 
-        for (int y = 0; y < mHeight; ++y) {
+        for (int y = 0; y < mHeight; ++y)
+        {
             std::vector<BlobLine> currentLines;
 
-            int lastColor = mColorMap[y*mWidth];
+            int lastColor = mColorMap[y * mWidth];
             int beginColorIndex = 0;
 
-            for (int x = 1; x < mWidth + 1; ++x) {
-                int i = y*mWidth + x;
+            for (int x = 1; x < mWidth + 1; ++x)
+            {
+                int i = y * mWidth + x;
                 int currentColor = (x == mWidth) ? -1 : mColorMap[i];
 
-                if (lastColor != currentColor) {
-                    if ((lastColor == 1 || lastColor == 2 || lastColor == 5) && x - 1 - beginColorIndex > 1) {//} || out[i] == 2) {
+                if (lastColor != currentColor)
+                {
+                    if ((lastColor == 1 || lastColor == 2 || lastColor == 5) && x - 1 - beginColorIndex > 1)
+                    {//} || out[i] == 2) {
                         BlobLine line;
                         line.y = y;
                         line.xi = beginColorIndex;
@@ -146,24 +200,30 @@ namespace gg {
                         line.color = lastColor;
                         line.blobIndex = -1;
 
-                        for (int l = 0; l < previousLines.size(); ++l) {
+                        for (int l = 0; l < previousLines.size(); ++l)
+                        {
                             // Skip if colors do not match
-                            if (previousLines[l].color != line.color) {
+                            if (previousLines[l].color != line.color)
+                            {
                                 continue;
                             }
 
                             // Skip if touching is too small
-                            int common = std::min(previousLines[l].xf, line.xf) - std::max(previousLines[l].xi, line.xi);
+                            int common =
+                                    std::min(previousLines[l].xf, line.xf) - std::max(previousLines[l].xi, line.xi);
 
-                            if (common < 2) {
+                            if (common < 2)
+                            {
                                 continue;
                             }
 
                             // Connect lines into blob
-                            if (line.blobIndex == -1) {
+                            if (line.blobIndex == -1)
+                            {
                                 line.blobIndex = previousLines[l].blobIndex;
                                 //cout << line.blobIndex << endl;
-                            } else if (line.blobIndex != previousLines[l].blobIndex) {
+                            } else if (line.blobIndex != previousLines[l].blobIndex)
+                            {
                                 mBlobs[line.blobIndex].addBlob(mBlobs[previousLines[l].blobIndex]);
                                 mBlobs[previousLines[l].blobIndex].mHidden = true;
                                 previousLines[l].blobIndex = line.blobIndex;
@@ -171,7 +231,8 @@ namespace gg {
                         }
 
                         // Create new blob?
-                        if (line.blobIndex == -1) {
+                        if (line.blobIndex == -1)
+                        {
                             Blob blob(lastColor);
                             line.blobIndex = (int) mBlobs.size();
                             mBlobs.push_back(blob);

@@ -233,8 +233,9 @@ namespace gg {
             // Mark selected centroids
             for (int i = 0; i < mSelectedCentroids.size(); ++i)
             {
-                cv::putText(mTest, std::to_string(i), cv::Point(mSelectedCentroids[i] * mSampleSize + mSampleSize / 2,
-                                                                mMat.rows + mSampleSize / 2), 1, 1,
+                cv::putText(mTest, std::to_string(i + 1),
+                            cv::Point(mSelectedCentroids[i] * mSampleSize + mSampleSize / 2,
+                                      mMat.rows + mSampleSize / 2), 1, 1,
                             cv::Scalar(255, 255, 255));
             }
 
@@ -300,10 +301,13 @@ namespace gg {
         {
             int c = mSelectedCentroids[i];
 
-            file << min[c][0] << " " << max[c][0] << " " << min[c][1]
-                 << " " << max[c][1] << " "
-                 << min[c][2] << " "
-                 << max[c][2] << "\n";
+            std::cout << c << std::endl;
+
+            file << min[c][0] << " " << min[c][1] << " " << min[c][2]
+                 << " " << max[c][0] << " "
+                 << max[c][1] << " "
+                 << max[c][2] << " " << (int) mCentroids[c * 3] << " " << (int) mCentroids[c * 3 + 1] << " "
+                 << (int) mCentroids[c * 3 + 2] << "\n";
         }
 
         file.close();

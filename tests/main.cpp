@@ -53,7 +53,7 @@ int main()
 
     // Add blob detector view onto the control panel
     //controlPanel.addSource(detector, 640, 0, 640, 360);
-    //controlPanel.addSource(detector.getTextureID(), 640, 0, 640, 360);
+    controlPanel.addSource(detector.getTextureID(), 640, 0, 640, 360);
 
     // Keyboard input
     controlPanel.setCharCallback(onKeyPress);

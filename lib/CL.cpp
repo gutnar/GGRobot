@@ -107,7 +107,7 @@ namespace gg {
         bufferArgument.flags = CL_MEM_READ_ONLY;
         mBufferArguments.push_back(bufferArgument);
 
-        setArg(argIndex, size, &bufferArgument.buffer);
+        //setArg(argIndex, size, &bufferArgument.buffer);
 
         return bufferArgument.buffer;
     }

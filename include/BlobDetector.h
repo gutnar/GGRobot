@@ -12,6 +12,8 @@
 #include <GLFW/glfw3.h>
 #include <cv.h>
 #include <fstream>
+#include <iostream>
+#include <string>
 #include "Blob.h"
 #include "CL.h"
 #include "Renderable.h"
@@ -49,8 +51,13 @@ namespace gg {
         int mHeight;
         int mNumberOfPixels;
 
+        // Cluster centroids
+        int* mCentroids;
+        int mNumberOfCentroids;
+
         // OpenCL buffers
         CL::Buffer mBufferIn;
+        CL::Buffer mBufferCentroids;
         CL::Buffer mBufferOut;
 
         // OpenCL output
