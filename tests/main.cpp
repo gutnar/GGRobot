@@ -10,11 +10,20 @@
 
 using namespace gg;
 
+// Control panel
+ControlPanel controlPanel(1280, 360);
+
 // Video capture
 VideoCapture video;
 
 // Tresholder
 Tresholder tresholder;
+
+// Blob detector
+BlobDetector detector(640, 360);
+
+// Whether to draw blobs on camera feed
+bool drawBlobs = true;
 
 // Handle keyboard events
 void onKeyPress(GLFWwindow* window, unsigned int codepoint)
@@ -28,6 +37,17 @@ void onKeyPress(GLFWwindow* window, unsigned int codepoint)
     // Save tresholded colors (S)
     else if (codepoint == 115) {
         tresholder.save();
+        detector.reloadConfiguration();
+    }
+
+    // Toggle showing blobs (B)
+    else if (codepoint == 98) {
+        drawBlobs = !drawBlobs;
+    }
+
+    // Quit (Q)
+    else if (codepoint == 113) {
+        controlPanel.close();
     }
 
     // Show pressed key
@@ -39,14 +59,8 @@ void onKeyPress(GLFWwindow* window, unsigned int codepoint)
 // Main
 int main()
 {
-    // Control panel
-    ControlPanel controlPanel(1280, 360);
-
     // Open video device
     video.open(0);
-
-    // Blob detector
-    BlobDetector detector(640, 360);
 
     // Add video source onto the control panel
     controlPanel.addSource(video.getTextureID(), 0, 0, 640, 360);
@@ -58,14 +72,48 @@ int main()
     // Keyboard input
     controlPanel.setCharCallback(onKeyPress);
 
+    // Timer
+    Timer timer;
+    int frames = 0;
+    double lastTime = timer.getTime();
+
     // Loop until the user closes the window
     while (controlPanel.isOpen())
     {
         // Get frame from video device
         video.capture();
+        cv::Mat frame = video.getLatestFrame();
 
         // Find blobs
         detector.processImage(video.getLatestFrame());
+
+        // Draw blobs
+        if (drawBlobs)
+        {
+            std::vector<gg::Blob> blobs = detector.getBlobs();
+
+            for (int i = 0; i < blobs.size(); ++i)
+            {
+                cv::line(frame, cv::Point(blobs[i].mMinX, blobs[i].mMinY), cv::Point(blobs[i].mMaxX, blobs[i].mMinY),
+                         cv::Scalar(255, 255, 0));
+                cv::line(frame, cv::Point(blobs[i].mMinX, blobs[i].mMaxY), cv::Point(blobs[i].mMaxX, blobs[i].mMaxY),
+                         cv::Scalar(255, 255, 0));
+                cv::line(frame, cv::Point(blobs[i].mMinX, blobs[i].mMinY), cv::Point(blobs[i].mMinX, blobs[i].mMaxY),
+                         cv::Scalar(255, 255, 0));
+                cv::line(frame, cv::Point(blobs[i].mMaxX, blobs[i].mMinY), cv::Point(blobs[i].mMaxX, blobs[i].mMaxY),
+                         cv::Scalar(255, 255, 0));
+            }
+
+            video.generateTexture();
+        }
+
+        // Print FPS
+        if (++frames == 50) {
+            double newTime = timer.getTime();
+            std::cout << 1000*(newTime - lastTime)/50 << std::endl;
+            lastTime = newTime;
+            frames = 0;
+        }
 
         // Redraw control panel
         controlPanel.redraw();

@@ -30,17 +30,23 @@ namespace gg {
         /// @brief Clean up OpenCL buffers
         ~BlobDetector();
 
+        /// @brief Reload color configuration
+        void reloadConfiguration();
+
         /// @brief Process texture
         //void processImage(GLuint texture);
 
         /// @brief Process OpenCV material
-        void processImage(const cv::Mat &mat);
+        cv::Mat processImage(const cv::Mat &mat);
 
         /// @brief Get OpenGL texture ID
         GLuint getTextureID();
 
         /// @brief Render
         void render();
+
+        /// @brief Get blobs in memory
+        std::vector<Blob> getBlobs();
 
     private:
         /// @brief Connect same color pixels into blobs

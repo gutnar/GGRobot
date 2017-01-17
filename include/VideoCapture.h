@@ -35,8 +35,12 @@ namespace gg {
         /// @brief Get OpenGL texture ID
         GLuint getTextureID();
 
-        /// @brief Capture a frame into texture
+        /// @brief Capture a frame
         void capture();
+
+        /// @brief Save latest frame in a texture
+        void generateTexture();
+
     private:
         // Device number
         int mDevice;

@@ -19,6 +19,7 @@ namespace gg {
         if (mOpenPrograms > 1) {
             return;
         }
+
         // OpenCL error code
         int err;
 
@@ -166,5 +167,15 @@ namespace gg {
         }
 
         clReleaseCommandQueue(commands);
+    }
+
+    void CL::releaseKernel() {
+        for (int i = 0; i < mBufferArguments.size(); ++i) {
+            clReleaseMemObject(mBufferArguments[i].buffer);
+        }
+
+        mBufferArguments.clear();
+
+        clReleaseKernel(mKernel);
     }
 }

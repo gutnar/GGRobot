@@ -198,4 +198,9 @@ namespace gg {
         // Poll for and process events
         glfwPollEvents();
     }
+
+    void ControlPanel::close()
+    {
+        glfwDestroyWindow(mWindow);
+    }
 }

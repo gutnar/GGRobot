@@ -56,6 +56,9 @@ namespace gg {
 
         /// @brief Add keyboard input event handler
         void setCharCallback(callbackType callback);
+
+        /// @brief Close window
+        void close();
     private:
         // GLFW window
         GLFWwindow* mWindow;

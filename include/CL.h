@@ -57,6 +57,9 @@ namespace gg {
         /// @param workSize Global work size
         void run(cl_uint dim, const size_t *workSize);
 
+        /// @brief Release kernel and buffers
+        void releaseKernel();
+
         // Global OpenCL variables
         static cl_device_id mDeviceId;
         static cl_context mContext;

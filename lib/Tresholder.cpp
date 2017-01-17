@@ -4,7 +4,7 @@
 namespace gg {
     cv::Mat Tresholder::mMat;
     cv::Mat Tresholder::mTest;
-    int Tresholder::mNumberOfCentroids = 10;
+    int Tresholder::mNumberOfCentroids = 20;
     int Tresholder::mSampleSize;
     int *Tresholder::mClusterMap;
     float *Tresholder::mCentroids;

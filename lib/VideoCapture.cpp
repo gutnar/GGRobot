@@ -44,10 +44,16 @@ namespace gg {
         return mTextureID;
     }
 
-    void VideoCapture::capture() {
+    void VideoCapture::capture()
+    {
         // Capture frame
         mVideoCapture >> mLatestFrame;
 
+        // Generate texture
+        generateTexture();
+    }
+
+    void VideoCapture::generateTexture() {
         // Resize
         cv::resize(mLatestFrame, mLatestFrame, cv::Size(640, 360), 0, 0, CV_INTER_LINEAR);
 
