@@ -1,6 +1,8 @@
 #include "BlobDetector.h"
 
 namespace gg {
+    /// Test
+    /// This is a test
     BlobDetector::BlobDetector(int width, int height)
     {
         // Generate OpenGL texture
