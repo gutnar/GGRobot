@@ -33,10 +33,7 @@ namespace gg {
         /// @brief Reload color configuration
         void reloadConfiguration();
 
-        /// @brief Process texture
-        //void processImage(GLuint texture);
-
-        /// @brief Process OpenCV material
+        /// @brief Process OpenCV material.
         cv::Mat processImage(const cv::Mat &mat);
 
         /// @brief Get OpenGL texture ID
@@ -47,11 +44,11 @@ namespace gg {
 
         /// @brief Get blobs in memory
         std::vector<Blob> getBlobs();
-
-    private:
+        
         /// @brief Connect same color pixels into blobs
         void findBlobs();
 
+    private:
         // Image size
         int mWidth;
         int mHeight;
