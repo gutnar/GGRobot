@@ -1,14 +1,17 @@
 #include "BlobDetector.h"
 
 namespace gg {
-    /// Test
-    /// This is a test
     BlobDetector::BlobDetector(int width, int height)
     {
         // Generate OpenGL texture
         glGenTextures(1, &mTextureID);
 
-        /// GET CENTROIDS FROM THE FILE
+        /*!
+         * Loads color settings from a configuration file. Each line in the configuration file
+         * defines one color. On each line there are 9 integers separated with spaces indicating
+         * color settings (MIN_B MAX_B MIN_G MAX_G MIN_R MAX_R CEN_B CEN_G CEN_R),
+         * where CEN is the centroid location in RGB space (0 to 255).
+         */
         reloadConfiguration();
 
         // Image size
@@ -16,7 +19,10 @@ namespace gg {
         mHeight = height;
         mNumberOfPixels = mWidth * mHeight;
 
-        /// OPENCL
+        /*! Compiles the OpenCL program that looks at the pixels in an image and assigns each of them to
+         * one of the colors defined in the configuration file (0 indicates no match, positive integers indicate
+         * the line number of the color in the configuration file.
+         */
         // Output array
         mColorMap = new int[mNumberOfPixels];
 
@@ -89,7 +95,12 @@ namespace gg {
         const size_t workSize[1] = {(size_t) mNumberOfPixels};
         mCLImageProcessor.run(1, workSize);
 
-        /// MARK PIXELS
+        /*!
+         * Using OpenCL, pixels are assigned to clusters by first looking at the MIN-MAX ranges of the configured colors
+         * and checking if the pixel is within the range. If the pixel is in only one of the ranges, it is assigned to that
+         * color. Otherwise, the pixel is assigned to the color whose centroid is the closest. The results are saved to a
+         * buffer that are used by the blob detector.
+         */
         for (int y = 0; y < mHeight; ++y)
         {
             for (int x = 0; x < mWidth; ++x)
@@ -120,7 +131,7 @@ namespace gg {
         clReleaseCommandQueue(commands);
          */
 
-        /// TEXTURING
+        // TEXTURING
         // Bind to our texture handle
         glBindTexture(GL_TEXTURE_2D, mTextureID);
 
@@ -153,11 +164,23 @@ namespace gg {
 
     void BlobDetector::findBlobs()
     {
+        /*!
+         * Uses the buffer returned by OpenCL to connect pixels into blobs.
+         */
+        
         // Detect blobs of same color
         std::vector<Blob> blobs;
         std::vector<BlobLine> previousLines;
         const int allowedOtherColors = 0;
 
+        /*!
+         * On every row of the image, sequential pixels that have been assigned to the same color are saved
+         * with their color, starting index and end index. After a sequence has been found, it is checked if
+         * there is a sequence on the previous row with the same color and whether at least 2 pixels are on shared columns.
+         * If not, then a new blob instance is created which contains only the new sequence, otherwise the sequence is
+         * appended to the blob that contains the previous one.
+         */
+        
         for (int y = 0; y < mHeight; ++y) {
             std::vector<BlobLine> currentLines;
 
@@ -242,7 +265,12 @@ namespace gg {
             previousLines = currentLines;
         }
 
-        // Discard non-blobs
+        /*!
+         * After all of the rows of the image have been processed and the potential blobs have been constructed,
+         * the blob detector saves only those blobs in memory that contain more than a single sequence. This means
+         * that the blobs must span at least two rows.
+         */
+        
         mBlobs.clear();
 
         for (int i = 0; i < blobs.size(); ++i) {
@@ -280,6 +308,10 @@ namespace gg {
 
 
     }
+    
+    /*!
+     * Returns the vector of blobs that were last detected.
+     */
 
     std::vector<Blob> BlobDetector::getBlobs() {
         return mBlobs;
